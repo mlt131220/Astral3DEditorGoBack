@@ -3,13 +3,13 @@ package cad
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"github.com/beego/beego/v2/adapter/logs"
 	"es-3d-editor-go-back/controllers"
 	"es-3d-editor-go-back/controllers/system"
 	"es-3d-editor-go-back/models/editor3d/cad"
 	"es-3d-editor-go-back/server"
 	"es-3d-editor-go-back/utils/wsocket"
+	"fmt"
+	"github.com/beego/beego/v2/adapter/logs"
 	"math"
 	"os"
 	"os/exec"
@@ -66,6 +66,14 @@ func (c *Lb3dEditorCadController) Dwg2Dxf() {
 	var dataPath string
 	// 判断上传的文件是否需要转换（需转换格式：[.dwg,...]）
 	var ext = strings.ToLower(header.Filename[strings.LastIndex(header.Filename, ".")+1:])
+
+	if ext != "dwg" && ext != "dxf" {
+		c.Data["json"] = server.RequestFail("上传文件格式不正确！")
+
+		c.ResponseJson()
+		return
+	}
+
 	if ext != "dwg" {
 		conversionStatus = 1
 		converterFilePath = "/static/upload/cad/" + time.Now().Format("20060102") + "/" + header.Filename
