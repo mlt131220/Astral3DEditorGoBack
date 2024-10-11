@@ -14,6 +14,7 @@
    git clone https://github.com/mlt131220/ES3DEditorGoBack
 ```
 Tips:
+* 数据库使用 MySQL，表结构文件位于 `static/lib/sql/ed-3d-editor.sql`；
 * 修改 `conf/app.conf` 下 `sql::conn` 项为自己的数据库连接，格式为`用户名:密码@tcp(地址:端口)/数据库?charset=utf8&loc=Local`；
 * 修改 `conf/app.conf` 下 `dev::cadDwgConverterAbPath` 项为本地CAD Dwg转换器执行程序文件夹绝对路径，转换程序使用 libredwg(已包含在项目static/lib/libredwg文件夹)；
 * `conf/app.conf` 下其它配置项(Revit转换服务配置/又拍云配置...)按需求改动；
