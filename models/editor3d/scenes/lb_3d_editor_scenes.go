@@ -2,9 +2,9 @@ package scenes
 
 import (
 	"errors"
+	"es-3d-editor-go-back/controllers/system"
 	"fmt"
 	"github.com/beego/beego/v2/adapter/logs"
-	"es-3d-editor-go-back/controllers/system"
 	"reflect"
 	"strings"
 	"time"
@@ -13,7 +13,7 @@ import (
 )
 
 type Lb3dEditorScenes struct {
-	Id                int64     `orm:"column(id);pk" description:"主键ID"  json:"id"`
+	Id                string    `orm:"column(id);pk" description:"主键ID,UUID"  json:"id"`
 	SceneType         string    `orm:"column(sceneType);size(24);null" description:"场景类型" json:"sceneType"`
 	HasDrawing        int       `orm:"column(hasDrawing)" description:"场景是否包含图纸 0:false  1:true" json:"hasDrawing"`
 	SceneIntroduction string    `orm:"column(sceneIntroduction);size(255);null" description:"场景描述" json:"sceneIntroduction"`
@@ -22,7 +22,7 @@ type Lb3dEditorScenes struct {
 	Zip               string    `orm:"column(zip);size(128)" description:"场景zip包" json:"zip"`
 	ZipSize           string    `orm:"column(zipSize);size(32)" description:"场景zip包大小" json:"zipSize"`
 	CoverPicture      string    `orm:"column(coverPicture);size(40000)" description:"保存场景时自动生成的封面图url" json:"coverPicture"`
-	ExampleSceneId    int       `orm:"column(exampleSceneId);null" description:"创建项目时来源于哪一个示例模板项目，null代表从空项目创建" json:"exampleSceneId"`
+	ExampleSceneId    string    `orm:"column(exampleSceneId);null" description:"创建项目时来源于哪一个示例模板项目，null代表从空项目创建" json:"exampleSceneId"`
 	ProjectType       int       `orm:"column(projectType);" description:"项目类型。0：Web3D-THREE  1：WebGIS-Cesium" json:"projectType"`
 	CesiumConfig      string    `orm:"column(cesiumConfig);size(1000);null" description:"WebGIS-Cesium 类型项目的基础Cesium配置" json:"cesiumConfig"`
 	UpdateTime        time.Time `orm:"column(updateTime);type(datetime);auto_now" json:"updateTime"`
@@ -55,15 +55,20 @@ func AddLb3dEditorScenes(m *Lb3dEditorScenes) (id int64, err error) {
 
 // GetLb3dEditorScenesById retrieves Lb3dEditorScenes by Id. Returns error if
 // Id doesn't exist
-func GetLb3dEditorScenesById(id int64) (v *Lb3dEditorScenes, err error) {
+func GetLb3dEditorScenesById(id string) (v *Lb3dEditorScenes, err error) {
 	o := orm.NewOrm()
 	v = &Lb3dEditorScenes{Id: id}
 	if err = o.Read(v); err == nil {
-		// 处理zip字段，如果该字段为空，则从关联的ExampleScene中获取zip字段的值
-		if v.Zip == "" && v.ExampleSceneId != 0 {
+		// 处理zip和CoverPicture字段，如果该字段为空，则从关联的ExampleScene中获取zip字段的值
+		if (v.Zip == "" || v.CoverPicture == "") && v.ExampleSceneId != "" {
 			exampleScene, err := GetLb3dEditorScenesExampleById(v.ExampleSceneId)
 			if err == nil {
-				v.Zip = exampleScene.Zip
+				if v.Zip == "" {
+					v.Zip = exampleScene.Zip
+				}
+				if v.CoverPicture == "" {
+					v.CoverPicture = exampleScene.CoverPicture
+				}
 			}
 		}
 		return v, nil
@@ -143,7 +148,17 @@ func GetAllLb3dEditorScenes(query map[string]string, fields []string, sortby []s
 
 	var l []Lb3dEditorScenes
 	qs = qs.OrderBy(sortFields...)
-	if _, err = qs.Limit(limit, offset).All(&l, fields...); err == nil {
+	_, err = qs.Limit(limit, offset).All(&l, fields...)
+
+	// 处理CoverPicture字段，如果该字段为空，则从关联的ExampleScene中获取CoverPicture字段的值
+	for i, v := range l {
+		if v.CoverPicture == "" && v.ExampleSceneId != "" {
+			v.CoverPicture = GetCoverPicture(v.ExampleSceneId)
+			l[i] = v
+		}
+	}
+
+	if err == nil {
 		if len(fields) == 0 {
 			for _, v := range l {
 				ml = append(ml, v)
@@ -222,7 +237,7 @@ func UpdateLb3dEditorScenesById(m *Lb3dEditorScenes) (err error) {
 }
 
 // DeleteLb3dEditorScenes 通过表Id删除场景
-func DeleteLb3dEditorScenes(id int64) (err error) {
+func DeleteLb3dEditorScenes(id string) (err error) {
 	o := orm.NewOrm()
 	v := Lb3dEditorScenes{Id: id}
 	// 数据库中存在确定id
@@ -247,6 +262,8 @@ func DeleteLb3dEditorScenes(id int64) (err error) {
 
 		if _, err = o.Delete(&Lb3dEditorScenes{Id: id}); err == nil {
 			logs.Info("lb_3d_editor_scenes 删除数据:", v)
+		} else {
+			return err
 		}
 	}
 	return

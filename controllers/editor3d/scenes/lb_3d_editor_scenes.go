@@ -6,9 +6,8 @@ import (
 	"es-3d-editor-go-back/controllers"
 	"es-3d-editor-go-back/models/editor3d/scenes"
 	"es-3d-editor-go-back/server"
-	"es-3d-editor-go-back/utils"
+	"github.com/google/uuid"
 	"math"
-	"strconv"
 	"strings"
 )
 
@@ -34,18 +33,19 @@ func (c *Lb3dEditorScenesController) URLMapping() {
 // @Failure 403 body is empty
 // @router /scenes/add [post]
 func (c *Lb3dEditorScenesController) Post() {
-	// 由于是开源项目，此处新增场景是先检查数据量，如果已经有100个场景，则不允许新增，否则允许新增
+	// 由于是开源项目，此处新增场景是先检查数据量，如果已经有500个场景，则不允许新增，否则允许新增
 	total, _ := scenes.GetTotalLb3dEditorScenes(nil)
-	if total >= 100 {
-		c.Data["json"] = server.RequestFail("共享项目场景数量已达上限（100个），不允许新增")
+	if total >= 500 {
+		c.Data["json"] = server.RequestFail("共享项目场景数量已达上限（500个），不允许新增")
 		c.ResponseJson()
 		return
 	}
 
 	var v scenes.Lb3dEditorScenes
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
-		// 使用雪花算法生成id
-		v.Id = utils.GetSnowflakeId()
+		// 使用UUID
+		v.Id = uuid.New().String()
+
 		if _, err := scenes.AddLb3dEditorScenes(&v); err == nil {
 			c.Ctx.Output.SetStatus(201)
 			c.Data["json"] = server.RequestSuccess(v)
@@ -67,8 +67,7 @@ func (c *Lb3dEditorScenesController) Post() {
 // @router /scenes/get/:id [get]
 func (c *Lb3dEditorScenesController) GetOne() {
 	idStr := c.Ctx.Input.Param(":id")
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-	v, err := scenes.GetLb3dEditorScenesById(id)
+	v, err := scenes.GetLb3dEditorScenesById(idStr)
 	if err != nil {
 		c.Data["json"] = server.RequestFail(err.Error())
 	} else {
@@ -159,8 +158,7 @@ func (c *Lb3dEditorScenesController) GetAll() {
 // @router /scenes/update/:id [put]
 func (c *Lb3dEditorScenesController) Put() {
 	idStr := c.Ctx.Input.Param(":id")
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-	v := scenes.Lb3dEditorScenes{Id: id}
+	v := scenes.Lb3dEditorScenes{Id: idStr}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
 		if err := scenes.UpdateLb3dEditorScenesById(&v); err == nil {
 			c.Data["json"] = server.RequestSuccess(v)
@@ -181,10 +179,9 @@ func (c *Lb3dEditorScenesController) Put() {
 // @Failure 403 "删除失败"
 // @router /scenes/del/:id [delete]
 func (c *Lb3dEditorScenesController) Delete() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, _ := strconv.ParseInt(idStr, 10, 64)
+	id := c.Ctx.Input.Param(":id")
 	if err := scenes.DeleteLb3dEditorScenes(id); err == nil {
-		c.Data["json"] = server.RequestSuccess("delete success!")
+		c.Data["json"] = server.RequestSuccess("删除成功！")
 	} else {
 		c.Data["json"] = server.RequestFail(err.Error())
 	}

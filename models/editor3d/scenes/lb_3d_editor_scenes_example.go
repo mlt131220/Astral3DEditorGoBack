@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/beego/beego/v2/client/orm"
 )
 
 type Lb3dEditorScenesExample struct {
-	Id                int       `orm:"column(id);auto" description:"主键ID" json:"id"`
+	Id                string    `orm:"column(id);pk" description:"主键ID,UUID" json:"id"`
 	SceneName         string    `orm:"column(sceneName);size(255);null" description:"场景名称" json:"sceneName"`
 	SceneType         string    `orm:"column(sceneType);size(24);null" description:"场景类型" json:"sceneType"`
 	SceneVersion      int       `orm:"column(sceneVersion);null" description:"场景版本" json:"sceneVersion"`
@@ -32,8 +33,61 @@ func (t *Lb3dEditorScenesExample) TableName() string {
 	return "lb_3d_editor_scenes_example"
 }
 
+// CoverPictureMap 存储封面图片的map
+var CoverPictureMap = make(map[string]string)
+
+// 用于确保初始化只发生一次的标志
+var isInitialized = false
+var mu sync.Mutex
+
 func init() {
 	orm.RegisterModel(new(Lb3dEditorScenesExample))
+
+	//SetCoverPictureMap()
+}
+
+func SetCoverPictureMap() {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if isInitialized {
+		return // 如果已经初始化过，则直接返回
+	}
+
+	l, err := Lb3dEditorScenesExampleGetAll()
+	if err == nil {
+		for _, v := range l {
+			CoverPictureMap[v.Id] = v.CoverPicture
+		}
+
+		isInitialized = true // 标记为已初始化
+		fmt.Println("GetCoverPicture id:", CoverPictureMap)
+	}
+}
+
+func GetCoverPicture(id string) (coverPicture string) {
+	if value, exists := CoverPictureMap[id]; exists {
+		return value
+	} else {
+		SetCoverPictureMap()
+
+		if value, exists = CoverPictureMap[id]; exists {
+			return value
+		} else {
+			return ""
+		}
+	}
+}
+
+func Lb3dEditorScenesExampleGetAll() (vm []*Lb3dEditorScenesExample, err error) {
+	o := orm.NewOrm()
+	qs := o.QueryTable(new(Lb3dEditorScenesExample))
+	var l []*Lb3dEditorScenesExample
+	_, err = qs.All(&l)
+	if err == nil {
+		vm = l
+	}
+	return
 }
 
 // AddLb3dEditorScenesExample insert a new Lb3dEditorScenesExample into database and returns
@@ -46,7 +100,7 @@ func AddLb3dEditorScenesExample(m *Lb3dEditorScenesExample) (id int64, err error
 
 // GetLb3dEditorScenesExampleById retrieves Lb3dEditorScenesExample by Id. Returns error if
 // Id doesn't exist
-func GetLb3dEditorScenesExampleById(id int) (v *Lb3dEditorScenesExample, err error) {
+func GetLb3dEditorScenesExampleById(id string) (v *Lb3dEditorScenesExample, err error) {
 	o := orm.NewOrm()
 	v = &Lb3dEditorScenesExample{Id: id}
 	if err = o.Read(v); err == nil {
@@ -172,7 +226,7 @@ func UpdateLb3dEditorScenesExampleById(m *Lb3dEditorScenesExample) (err error) {
 
 // DeleteLb3dEditorScenesExample deletes Lb3dEditorScenesExample by Id and returns error if
 // the record to be deleted doesn't exist
-func DeleteLb3dEditorScenesExample(id int) (err error) {
+func DeleteLb3dEditorScenesExample(id string) (err error) {
 	o := orm.NewOrm()
 	v := Lb3dEditorScenesExample{Id: id}
 	// ascertain id exists in the database

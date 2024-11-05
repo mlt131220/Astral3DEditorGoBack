@@ -6,8 +6,8 @@ import (
 	"es-3d-editor-go-back/controllers"
 	"es-3d-editor-go-back/models/editor3d/scenes"
 	"es-3d-editor-go-back/server"
+	"github.com/google/uuid"
 	"math"
-	"strconv"
 	"strings"
 )
 
@@ -35,6 +35,9 @@ func (c *Lb3dEditorScenesExampleController) URLMapping() {
 func (c *Lb3dEditorScenesExampleController) Post() {
 	var v scenes.Lb3dEditorScenesExample
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
+		// 使用UUID
+		v.Id = uuid.New().String()
+
 		if _, err := scenes.AddLb3dEditorScenesExample(&v); err == nil {
 			c.Ctx.Output.SetStatus(201)
 			c.Data["json"] = server.RequestSuccess(v)
@@ -55,8 +58,7 @@ func (c *Lb3dEditorScenesExampleController) Post() {
 // @Failure 403 :id is empty
 // @router /sceneExample/:id [get]
 func (c *Lb3dEditorScenesExampleController) GetOne() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, _ := strconv.Atoi(idStr)
+	id := c.Ctx.Input.Param(":id")
 	v, err := scenes.GetLb3dEditorScenesExampleById(id)
 	if err != nil {
 		c.Data["json"] = server.RequestFail(err.Error())
@@ -147,8 +149,7 @@ func (c *Lb3dEditorScenesExampleController) GetAll() {
 // @Failure 403 :id is not int
 // @router /sceneExample/:id [put]
 func (c *Lb3dEditorScenesExampleController) Put() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, _ := strconv.Atoi(idStr)
+	id := c.Ctx.Input.Param(":id")
 	v := scenes.Lb3dEditorScenesExample{Id: id}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &v); err == nil {
 		if err := scenes.UpdateLb3dEditorScenesExampleById(&v); err == nil {
@@ -170,8 +171,7 @@ func (c *Lb3dEditorScenesExampleController) Put() {
 // @Failure 403 id is empty
 // @router /sceneExample/:id [delete]
 func (c *Lb3dEditorScenesExampleController) Delete() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, _ := strconv.Atoi(idStr)
+	id := c.Ctx.Input.Param(":id")
 	if err := scenes.DeleteLb3dEditorScenesExample(id); err == nil {
 		c.Data["json"] = server.RequestSuccess("delete success!")
 	} else {
