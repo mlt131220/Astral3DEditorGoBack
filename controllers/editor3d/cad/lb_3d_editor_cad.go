@@ -74,6 +74,9 @@ func (c *Lb3dEditorCadController) Dwg2Dxf() {
 		return
 	}
 
+	//20241108:文件名去除空格，不然cmd指令会报错
+	header.Filename = strings.Replace(header.Filename, " ", "", -1)
+
 	if ext != "dwg" {
 		conversionStatus = 1
 		converterFilePath = "/static/upload/cad/" + time.Now().Format("20060102") + "/" + header.Filename
@@ -149,7 +152,8 @@ func (c *Lb3dEditorCadController) Dwg2Dxf() {
 					wsocket.Publish(wsocket.Message{
 						Name: uName,
 						Message: wsocket.ResponseMessage{
-							Type: "cad",
+							Type:       "cad",
+							Subscriber: uName,
 							Data: ConversionResult{
 								ConversionStatus: "failed",
 								Item:             v,
@@ -160,6 +164,7 @@ func (c *Lb3dEditorCadController) Dwg2Dxf() {
 				} else {
 					// 读取转换后的文件流，上传至upyun
 					dxfFile, err := os.Open(outputFile)
+					defer dxfFile.Close()
 					if err != nil {
 						logs.Error("failed to open file: ", err.Error())
 
@@ -168,7 +173,8 @@ func (c *Lb3dEditorCadController) Dwg2Dxf() {
 						wsocket.Publish(wsocket.Message{
 							Name: uName,
 							Message: wsocket.ResponseMessage{
-								Type: "cad",
+								Type:       "cad",
+								Subscriber: uName,
 								Data: ConversionResult{
 									ConversionStatus: "failed",
 									Item:             v,
@@ -178,6 +184,7 @@ func (c *Lb3dEditorCadController) Dwg2Dxf() {
 						})
 					} else {
 						v.ConverterFilePath = "/static/upload/cad/" + time.Now().Format("20060102") + "/" + filepath.Base(dxfFile.Name())
+						fmt.Println("[cad] 转换成功，准备上传至又拍云: ", dxfFile.Name())
 						err = system.UpYunUpload(v.ConverterFilePath, dxfFile)
 						if err != nil {
 							logs.Error(header.Filename+"上传至又拍云失败，Error: ", err.Error())
@@ -187,7 +194,8 @@ func (c *Lb3dEditorCadController) Dwg2Dxf() {
 							wsocket.Publish(wsocket.Message{
 								Name: uName,
 								Message: wsocket.ResponseMessage{
-									Type: "cad",
+									Type:       "cad",
+									Subscriber: uName,
 									Data: ConversionResult{
 										ConversionStatus: "failed",
 										Item:             v,
@@ -201,19 +209,20 @@ func (c *Lb3dEditorCadController) Dwg2Dxf() {
 							v.FilePath = v.ConverterFilePath
 						}
 					}
-
-					defer dxfFile.Close()
 				}
 
+				fmt.Println("[cad] 转换完成，准备更新数据库: ", v.Id)
 				err := cad.UpdateLb3dEditorCadById(&v)
 				if v.ConversionStatus == 1 {
 					if err == nil {
+						fmt.Println("[cad] 转换成功，更新数据库成功！发送成功消息")
 						wsocket.Publish(wsocket.Message{
 							Name: uName,
 							Message: wsocket.ResponseMessage{
-								Type: "cad",
+								Type:       "cad",
+								Subscriber: uName,
 								Data: ConversionResult{
-									ConversionStatus: "success",
+									ConversionStatus: "completed",
 									Item:             v,
 									Message:          "转换成功！",
 								},
@@ -223,7 +232,8 @@ func (c *Lb3dEditorCadController) Dwg2Dxf() {
 						wsocket.Publish(wsocket.Message{
 							Name: uName,
 							Message: wsocket.ResponseMessage{
-								Type: "cad",
+								Type:       "cad",
+								Subscriber: uName,
 								Data: ConversionResult{
 									ConversionStatus: "failed",
 									Item:             v,

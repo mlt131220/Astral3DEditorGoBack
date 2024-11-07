@@ -1,10 +1,10 @@
 package system
 
 import (
-	beego "github.com/beego/beego/v2/server/web"
-	"github.com/gorilla/websocket"
 	"es-3d-editor-go-back/server"
 	"es-3d-editor-go-back/utils/wsocket"
+	beego "github.com/beego/beego/v2/server/web"
+	"github.com/gorilla/websocket"
 	"net/http"
 )
 
@@ -56,4 +56,14 @@ func (c *LbSysWebSocketController) WsHandler() {
 	}
 
 	wsocket.InitConnection(uname, ws)
+
+	// 发送连接成功消息
+	wsocket.Publish(wsocket.Message{
+		Name: uname,
+		Message: wsocket.ResponseMessage{
+			Type:       "connect",
+			Subscriber: uname,
+			Data:       "hello " + uname,
+		},
+	})
 }
